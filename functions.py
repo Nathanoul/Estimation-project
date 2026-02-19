@@ -95,8 +95,8 @@ def ekf_star_update(x, P, z, r, R):
     H = np.zeros((3,7))
     rx = cross_matrix(r)
     ex = cross_matrix(e)
-    H[0:3, 0:3] = -2*r @ e.T + 2*e @ r.T - 2*e.T @ r * np.eye(3) + 2*q4 * rx
-    H[0:3, 3] = 2*q4 * r - 2*ex @ r
+    H[0:3, 0:3] = 2*(-r @ e.T + e @ r.T + e.T @ r * np.eye(3) + q4 * rx)
+    H[0:3, 3] = 2*(q4 * r - ex @ r)
 
     y = z - h
     S = H @ P @ H.T + R
@@ -145,16 +145,14 @@ def simulate_filter(T, q_true, mu_true, init_guess, mode):
     dt = 0.1
     steps = int(T/dt)
 
-    sigma_eps = 1e-7
-    sigma_b = 1e-4
+    sigma_eps = np.sqrt(1e-13)
+    sigma_n = np.sqrt(1e-11)
+    sigma_b = 10*np.pi/(180*3600)
     sigma_nor = 1e-6
 
-    sigma_eps2 = 1e-13
-    sigma_n2 = 1e-11
-
     Q = np.block([
-        [sigma_eps2 * np.eye(3), np.zeros((3, 3))],
-        [np.zeros((3, 3)), sigma_n2 * np.eye(3)]
+        [sigma_eps**2 * np.eye(3), np.zeros((3, 3))],
+        [np.zeros((3, 3)), sigma_n**2 * np.eye(3)]
     ])
     R = np.eye(3)*sigma_b**2
 
@@ -167,6 +165,7 @@ def simulate_filter(T, q_true, mu_true, init_guess, mode):
 
     errors = []
     norms_errors = []
+
 
     for k in range(steps):
 

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from functions import *
 
 if __name__ == '__main__':
-    q_true = quat_normalize(np.array([0.5, 0.5, 0.5, 0.5]))
+    q_true = quat_normalize(np.array([0.378, -0.378, 0.756, 0.378]))
     mu_true = 1e-5*np.ones(3)
     T = 600
 

@@ -1,6 +1,4 @@
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import figure
-
 from functions import *
 
 if __name__ == '__main__':

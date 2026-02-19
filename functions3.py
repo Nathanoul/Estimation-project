@@ -28,7 +28,7 @@ def ksi_matrix(q):
 def quat_propagate(q, w, dt):
     Omega = omega_matrix(w)
     q_dot = 0.5 * Omega @ q
-    return quat_normalize(q + q_dot * dt)
+    return q + q_dot * dt
 
 def cross_matrix(a):
     return np.array([
@@ -77,9 +77,8 @@ def ekf_predict(x, P, w_meas, Q, dt):
     G[0:4, 0:3] = -1/2 * ksi_matrix(q_pred)
     G[4:7, 3:6] = np.eye(3)
 
-    Phi = np.eye(7) + F * dt
 
-    P_pred = Phi @ P @ Phi.T + G @ Q @ G.T * dt
+    P_pred = F @ P @ F.T + G @ Q @ G.T
 
     return x_pred, P_pred
 
@@ -95,8 +94,8 @@ def ekf_star_update(x, P, z, r, R):
     H = np.zeros((3,7))
     rx = cross_matrix(r)
     ex = cross_matrix(e)
-    H[0:3, 0:3] = -2*r @ e.T + 2*e @ r.T - 2*e.T @ r * np.eye(3) + 2*q4 * rx
-    H[0:3, 3] = 2*q4 * r - 2*ex @ r
+    H[0:3, 0:3] = -2*r @ e.T + 2*e @ r.T + e.T @ r * np.eye(3) + 2*q4 * rx
+    H[0:3, 3] = 2*q4 * r - 2*q4 * ex @ r
 
     y = z - h
     S = H @ P @ H.T + R
@@ -104,8 +103,7 @@ def ekf_star_update(x, P, z, r, R):
 
 
     x_upd = x + K @ y
-    I = np.eye(7)
-    P_upd = (I - K @ H) @ P @ (I - K @ H).T + K @ R @ K.T
+    P_upd = (np.eye(7) - K @ H) @ P
 
     return x_upd, P_upd
 
@@ -123,8 +121,7 @@ def ekf_norm_update(x, P, sigma_nor):
     K = P @ H.T / S
 
     x_new = x + (K.flatten()*r)
-    I = np.eye(7)
-    P_new = (I - K @ H) @ P @ (I - K @ H).T + K * sigma_nor ** 2 * K.T
+    P_new = (np.eye(7) - K @ H) @ P
 
     return x_new, P_new
 
@@ -145,17 +142,11 @@ def simulate_filter(T, q_true, mu_true, init_guess, mode):
     dt = 0.1
     steps = int(T/dt)
 
-    sigma_eps = 1e-7
+    sigma_eps = 1e-6
     sigma_b = 1e-4
     sigma_nor = 1e-6
 
-    sigma_eps2 = 1e-13
-    sigma_n2 = 1e-11
-
-    Q = np.block([
-        [sigma_eps2 * np.eye(3), np.zeros((3, 3))],
-        [np.zeros((3, 3)), sigma_n2 * np.eye(3)]
-    ])
+    Q = np.eye(6)*1e-8
     R = np.eye(3)*sigma_b**2
 
     r1 = np.array([1,0,0])
@@ -175,6 +166,7 @@ def simulate_filter(T, q_true, mu_true, init_guess, mode):
         # true dynamics
         w = true_omega(t)
         q_true = quat_propagate(q_true, w, dt)
+        q_true = quat_normalize(q_true)
 
         # gyro
         w_meas = gyro_measurement(w, mu_true, sigma_eps, dt)
